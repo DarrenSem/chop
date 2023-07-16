@@ -1,2 +1,5 @@
 # chop
-Poker tournament prize pool EVEN CHOP calculator (after first giving 5% to the Chip Leader) 
+Poker tournament prize pool calculator for EVEN CHOP (after first giving 5% to the Chip Leader) 
+
+https://darrensem.github.io/chop/
+
