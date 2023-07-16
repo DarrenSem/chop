@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Prize Pool Calculator</title>
+<script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+const APP_KEY = "prize-pool-chop-minus-5%";
+
+const App = () => {
+  const [places, setPlaces] = React.useState(JSON.parse(localStorage.getItem(APP_KEY)) || []);
+  const inputRefs = React.useRef([]);
+
+  React.useEffect(() => {
+    localStorage.setItem(APP_KEY, JSON.stringify(places));
+    
+    if (inputRefs.current.length) {
+      setTimeout(() => inputRefs.current[inputRefs.current.length - 1]?.focus(), 4);
+    }
+    
+  }, [places]);
+
+  const updatePlace = (index, value) => {
+    const newPlaces = [...places];
+    newPlaces[index] = value <= 0 ? 0 : Number(value);
+    setPlaces(newPlaces);
+  };
+
+  const removePlace = (index) => {
+    const newPlaces = [...places];
+    newPlaces.splice(index, 1);
+    setPlaces(newPlaces);
+
+		// always a pain to get focus logic to "feel right"...
+    if (
+      //index === newPlaces.length &&
+      newPlaces.length
+      // && newPlaces.slice(-1) > 0
+    ) {
+      setTimeout(() => inputRefs.current[newPlaces.length - 1].focus(), 4);
+    }
+    
+  };
+
+  const addNewPlace = () => {
+    setPlaces([...places, ""]);
+  };
+
+  const totalPrizePool = places
+    .filter(value => value > 0)
+    .reduce((a, c) => a + Number(c), 0);
+  const bonus = Math.floor(totalPrizePool * 0.05);
+  const remaining = totalPrizePool - bonus;
+  const count = places.filter(value => value > 0).length;
+  const chopValue = count ? Math.floor(remaining / count) : NaN;
+  const chopTotal = count ? (chopValue * count) : NaN;
+
+  return (
+    <div>
+      {places.map((place, index) => (
+        <div key={index} style={{ display: 'flex', marginBottom: '10px', alignItems: 'center' }}>
+          <input type="number" style={{ width: '100px' }} value={place || ''} 
+                 onChange={({ target: { value } }) => updatePlace(index, value)}  
+                 ref={el => inputRefs.current[index] = el} />
+          <button style={{ height: '20px', marginLeft: '10px' }} onClick={() => removePlace(index)}>X</button>
+        </div>
+      ))}
+      <button onClick={() => addNewPlace()}>Add Place</button> 
+      <div>Total Prize Pool: {totalPrizePool > 0 ? `$${totalPrizePool}` : ''}</div>
+      <div>Even Chop: {chopValue > 0 ? `$${chopValue} x ${count} ( = ${chopTotal} )` : ''}</div>
+      <div>(after 5% for Chip Leader{bonus > 0 ? `: $${bonus})` : ')'}</div>
+    </div>
+  );
+};
+
+ReactDOM.render(<App />, document.querySelector('#root'));
+
+</script>
+</body>
+</html>
