@@ -13,12 +13,15 @@
 <script type="text/babel">
 
 const EXAMPLE_DATA = ["1023", "570", "250", "180", ""]; // Pool: $2023 , Even: $480 x 4 ( = 1920 total ) + $101 CL
+
+const FOCUS_DELAY_DEFAULT = 4;
+const FOCUS_DELAY_SECONDARY = FOCUS_DELAY_DEFAULT + 50;
+
 const LABEL_INSERT = "Insert new place at top of list";
 const LABEL_INPUT = index => `Payout for ${ordinal(index + 1)} place`;
 const LABEL_REMOVE = index => `Remove ${ordinal(index + 1)} place`;
 const LABEL_APPEND = "Add new place to bottom of list";
-const FOCUS_DELAY_DEFAULT = 4;
-const FOCUS_DELAY_SECONDARY = FOCUS_DELAY_DEFAULT + 250;
+
 const APP_KEY = "prize-pool-chop-minus-5%";
 
 const zero_our = (_ = [
@@ -73,7 +76,7 @@ const App = () => {
   React.useEffect(() => {
     localStorage.setItem(APP_KEY, JSON.stringify(places));
     // focusIndex(places.length - 1);
-    focusIndex(0);
+    // focusIndex(0);
   }, [places]);
 
   const totalPrizePool = places
