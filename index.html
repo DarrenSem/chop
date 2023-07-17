@@ -18,6 +18,7 @@ const LABEL_INPUT = index => `Payout for ${ordinal(index + 1)} place`;
 const LABEL_REMOVE = index => `Remove ${ordinal(index + 1)} place`;
 const LABEL_APPEND = "Add new place to bottom of list";
 const FOCUS_DELAY_DEFAULT = 4;
+const FOCUS_DELAY_SECONDARY = FOCUS_DELAY_DEFAULT + 250;
 const APP_KEY = "prize-pool-chop-minus-5%";
 
 const zero_our = (_ = [
@@ -46,26 +47,26 @@ const App = () => {
   const focusIndex = (index, delay) => setTimeout( () => inputRefs.current[index]?.focus(), delay || FOCUS_DELAY_DEFAULT );
 
   const insertNewPlace = () => {
-    focusIndex(0, FOCUS_DELAY_DEFAULT + 250);
+    focusIndex(0, FOCUS_DELAY_SECONDARY);
     setPlaces(["", ...places]);
   };
 
   const removePlace = (index) => {
     const newPlaces = [...places];
     newPlaces.splice(index, 1);
-    focusIndex(index, FOCUS_DELAY_DEFAULT + 1);
+    focusIndex(index, FOCUS_DELAY_SECONDARY);
     setPlaces(newPlaces);
   };
 
   const appendNewPlace = () => {
-    focusIndex(places.length, FOCUS_DELAY_DEFAULT + 1);
+    focusIndex(places.length, FOCUS_DELAY_SECONDARY);
     setPlaces([...places, ""]);
   };
 
   const updatePlace = (index, value) => {
     const newPlaces = [...places];
     newPlaces[index] = value <= 0 ? 0 : Number(value);
-    focusIndex(index, FOCUS_DELAY_DEFAULT + 1);
+    focusIndex(index, FOCUS_DELAY_SECONDARY);
     setPlaces(newPlaces);
   };
 
