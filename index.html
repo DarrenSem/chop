@@ -46,7 +46,7 @@ const App = () => {
   const focusIndex = (index, delay) => setTimeout( () => inputRefs.current[index]?.focus(), delay || FOCUS_DELAY_DEFAULT );
 
   const insertNewPlace = () => {
-    focusIndex(0, FOCUS_DELAY_DEFAULT + 50);
+    focusIndex(0, FOCUS_DELAY_DEFAULT + 250);
     setPlaces(["", ...places]);
   };
 
