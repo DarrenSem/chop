@@ -83,17 +83,7 @@ const App = () => {
     .filter(value => value > 0)
     .reduce((a, c) => a + Number(c), 0);
 
-  const CL_PERCENT = 5.0;
-  
-  const percentLink = () => (
-    <a
-      href="#"
-    >
-      {CL_PERCENT.toFixed(1)}%
-    </a>
-  );
-
-  const bonus = Math.floor(totalPrizePool * ( CL_PERCENT / 100 ) );
+  const bonus = Math.floor(totalPrizePool * 0.05);
 
   const remaining = totalPrizePool - bonus;
 
@@ -102,12 +92,12 @@ const App = () => {
   const chopValue = count ? Math.floor(remaining / count) : NaN;
 
   const chopTotal = count ? (chopValue * count) : NaN;
-  
+
   return (
     <div>
 
       <button
-        className="btn btn-info mb-3"
+        className="btn btn-info mb-2"
         style={{ width: '10em' }}
         onClick={() => insertNewPlace()}
         role="button"
@@ -123,37 +113,27 @@ const App = () => {
           return ( <div key={index}
               className="d-flex align-items-center mb-2"
           >
-            
-            <label
-              style={{ display: 'flex', alignItems: 'center' }}
-            >
-              <span
-                style={{ minWidth: '2em', textAlign: 'right' }}
-                className="mr-1"
-              >
-                {ordinal(index+1)}
-              </span>
 
-              <input
-                type="number" step="10"
-                className="form-control ml-1 mr-2"
-                style={{ width: '7.5em' }}
-                value={place || ''} 
-                onChange={({ target: { value } }) => updatePlace(index, value)}  
-                ref={el => inputRefs.current[index] = el}
-                aria-label={LABEL_INPUT(index)}
-                title={LABEL_INPUT(index)}
-              />
+            <input
+              type="number" step="10"
+              className="form-control mr-2"
+              style={{ width: '8.9em' }}
+              value={place || ''} 
+              onChange={({ target: { value } }) => updatePlace(index, value)}  
+              ref={el => inputRefs.current[index] = el}
+              aria-label={LABEL_INPUT(index)}
+              title={LABEL_INPUT(index)}
+            />
 
-              <button
-                // style={{ height: '20px', marginLeft: '10px' }}
-                className="btn btn-danger btn-sm"
-                onClick={() => removePlace(index)}
-                role="button"
-                aria-label={LABEL_REMOVE(index)}
-                title={LABEL_REMOVE(index)}
-              >X</button>
-            </label>
+            <button
+              // style={{ height: '20px', marginLeft: '10px' }}
+              className="btn btn-danger btn-sm"
+              onClick={() => removePlace(index)}
+              role="button"
+              aria-label={LABEL_REMOVE(index)}
+              title={LABEL_REMOVE(index)}
+            >X</button>
+
           </div> );
 
         } )
@@ -161,7 +141,7 @@ const App = () => {
       }
 
       <button
-        className="btn btn-primary mb-1"
+        className="btn btn-primary my-1"
         style={{ width: '10em' }}
         onClick={() => appendNewPlace()}
         role="button"
@@ -185,7 +165,7 @@ const App = () => {
         }
       </div>
 
-      {totalPrizePool > 0 && <div>( after first giving {percentLink()} to <strong>Chip Leader{bonus > 0 ? `: $${bonus}` : ''}</strong> )</div>}
+      {totalPrizePool > 0 && <div>( after first giving 5% to <strong>Chip Leader{bonus > 0 ? `: $${bonus}` : ''}</strong> )</div>}
 
     </div>
   );
