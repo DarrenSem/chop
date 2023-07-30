@@ -2,13 +2,44 @@
 <html>
 <head>
 <title>EVEN CHOP calculator for poker MTTs (after first 5% to Chip Leader)</title>
-<script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<!-- <script src="https://unpkg.com/react@18/umd/react.development.js"></script> -->
+
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script> -->
+
+<script src="https://unpkg.com/@babel/standalone@7.22.9/babel.min.js"></script>
+<!-- <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script> -->
+<!-- ^ disabled because even the *latest* "babel-standalone" package does not recognize my_obj?.my_prop etc -->
+
+<script src="https://unpkg.com/redux@4.0.5/dist/redux.js"></script>
+<script src="https://unpkg.com/react-redux@7.2.0/dist/react-redux.js"></script>
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body class="m-2">
 <div id="root"></div>
+
+<style type="text/css">
+	.modal {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background: rgba(0, 0, 0, 0.5);
+	}
+
+	.modal-content {
+		background: white;
+		padding: 20px;
+		width: 50%;
+	}
+</style>
 
 <script type="text/babel">
 
@@ -22,176 +53,372 @@ const LABEL_INPUT = index => `Payout for ${ordinal(index + 1)} place`;
 const LABEL_REMOVE = index => `Remove ${ordinal(index + 1)} place`;
 const LABEL_APPEND = "Add new place to bottom of list";
 
+const CLICK_TO_OPEN_MODAL = "Click to change % given to Chip Leader\n*before* the remainder is chopped evenly";
+const BONUS_MIN = 0;
+const BONUS_MAX = 25.0;
+
 const APP_KEY = "prize-pool-chop-minus-5%";
 
 const zero_our = (_ = [
-  'The Beatles made an "off by one error"; `0` is actually the loneliest number.',
-  'Welcome to "ground zero"; have a `blast` doing nothing!',
-  'Puns about `0` are like #DadJokes that earn zero Internet Points. But, gottacatchemall eh?',
-  "An even chop of nothing is, hmmm, let's see, nothing divided by nothing, carry the `0`...",
-  'From Hero To `Zero`. Are you one of those people that just want to watch the world burn?',
-  'There are `zero` other "funny" sayings to discover. Stop wasting time!',
-]) => _[Math.floor(Math.random() * _.length)]; // more accurate than this terser test: ]) => _[ (+new Date) % _.length ];
+	'The Beatles made an "off by one error"; `0` is actually the loneliest number.',
+	'Welcome to "ground zero"; have a `blast` doing nothing!',
+	'Puns about `0` are like #DadJokes that earn zero Internet Points. But, gottacatchemall eh?',
+	"An even chop of nothing is, hmmm, let's see, nothing divided by nothing, carry the `0`...",
+	'From Hero To `Zero`. Are you one of those people that just want to watch the world burn?',
+	'There are `zero` other "funny" sayings to discover. Stop wasting time!',
+]) => _[ Math.floor( Math.random() * _.length ) ];
 
 const ordinal = num => `${num}${[, "st", "nd", "rd"][ (num % 100 < 11 || num % 100 > 13) && (num % 10) ] || "th"}`;
 
-const loadedPlaces = JSON.parse(localStorage.getItem(APP_KEY)) || [];
+let inputRefs = {};
 
-const App = () => {
+const focusIndex = (indexOrElement, delay) => (
+	setTimeout(
+		() => {
+			indexOrElement = (
+				isNaN(indexOrElement)
+				? indexOrElement
+				: inputRefs.current[indexOrElement]
+			),
+			indexOrElement?.focus && indexOrElement.focus()
+		},
+		delay || FOCUS_DELAY_DEFAULT
+	)
+);
 
-  const [places, setPlaces] = React.useState(
-  	loadedPlaces.some(Boolean) ? loadedPlaces : EXAMPLE_DATA
-  );
+const loaded = (
+	focusIndex(0, FOCUS_DELAY_SECONDARY),
+	JSON.parse(localStorage.getItem(APP_KEY)) ?? {}
+);
 
-  const inputRefs = React.useRef([]);
+const {
+	places: loadedPlaces = [],
+	bonus: loadedBonus = 5
+} = loaded;
 
-  const zero = zero_our().split("`");
+// Action Types
+const SHOW_MODAL = "SHOW_MODAL";
+const HIDE_MODAL = "HIDE_MODAL";
+const SET_NUMBER = "SET_NUMBER";
 
-  const focusIndex = (index, delay) => setTimeout( () => inputRefs.current[index]?.focus(), delay || FOCUS_DELAY_DEFAULT );
+// Action Creators
+const showBonusModal = () => ({ type: SHOW_MODAL });
+const hideBonusModal = () => ({ type: HIDE_MODAL });
+const setBonus = number0to50 => ({ type: SET_NUMBER, payload: number0to50 });
 
-  const insertNewPlace = () => {
-    focusIndex(0, FOCUS_DELAY_SECONDARY);
-    setPlaces(["", ...places]);
-  };
+// Reducers
+const modalReducer = (state, action) => {
 
-  const removePlace = (index) => {
-    const newPlaces = [...places];
-    newPlaces.splice(index, 1);
-    focusIndex(index, FOCUS_DELAY_SECONDARY);
-    setPlaces(newPlaces);
-  };
+	state ??= { showModal: false, bonus: loadedBonus };
 
-  const appendNewPlace = () => {
-    focusIndex(places.length, FOCUS_DELAY_SECONDARY);
-    setPlaces([...places, ""]);
-  };
+	switch(action.type) {
+	case SHOW_MODAL:
+		return { ...state, showModal: true };
 
-  const updatePlace = (index, value) => {
-    const newPlaces = [...places];
-    newPlaces[index] = value <= 0 ? 0 : Number(value);
-    focusIndex(index, FOCUS_DELAY_SECONDARY);
-    setPlaces(newPlaces);
-  };
+	case HIDE_MODAL:
+		return { ...state, showModal: false };
 
-  React.useEffect(() => {
-    localStorage.setItem(APP_KEY, JSON.stringify(places));
-    // focusIndex(places.length - 1);
-    // focusIndex(0);
-  }, [places]);
+	case SET_NUMBER:
+		return { ...state, bonus: action.payload };
 
-  const totalPrizePool = places
-    .filter(value => value > 0)
-    .reduce((a, c) => a + Number(c), 0);
-
-  const CL_PERCENT = 5.0;
-  
-  const percentLink = () => (
-    <a
-      href="#"
-    >
-      {CL_PERCENT.toFixed(1)}%
-    </a>
-  );
-
-  const bonus = Math.floor(totalPrizePool * ( CL_PERCENT / 100 ) );
-
-  const remaining = totalPrizePool - bonus;
-
-  const count = places.filter(value => value > 0).length;
-
-  const chopValue = count ? Math.floor(remaining / count) : NaN;
-
-  const chopTotal = count ? (chopValue * count) : NaN;
-  
-  return (
-    <div>
-
-      <button
-        className="btn btn-info mb-3"
-        style={{ width: '10em' }}
-        onClick={() => insertNewPlace()}
-        role="button"
-        aria-label={LABEL_INSERT}
-        title={LABEL_INSERT}
-      >Insert Place</button>
-
-      {
-        places.length
-        ? places.map( (place, index) => {
-
-          // return ( <div key={index} style={{ display: 'flex', marginBottom: '10px', alignItems: 'center' }}>
-          return ( <div key={index}
-              className="d-flex align-items-center mb-2"
-          >
-            
-            <label
-              style={{ display: 'flex', alignItems: 'center' }}
-            >
-              <span
-                style={{ minWidth: '2em', textAlign: 'right' }}
-                className="mr-1"
-              >
-                {ordinal(index+1)}
-              </span>
-
-              <input
-                type="number" step="10"
-                className="form-control ml-1 mr-2"
-                style={{ width: '7.5em' }}
-                value={place || ''} 
-                onChange={({ target: { value } }) => updatePlace(index, value)}  
-                ref={el => inputRefs.current[index] = el}
-                aria-label={LABEL_INPUT(index)}
-                title={LABEL_INPUT(index)}
-              />
-
-              <button
-                // style={{ height: '20px', marginLeft: '10px' }}
-                className="btn btn-danger btn-sm"
-                onClick={() => removePlace(index)}
-                role="button"
-                aria-label={LABEL_REMOVE(index)}
-                title={LABEL_REMOVE(index)}
-              >X</button>
-            </label>
-          </div> );
-
-        } )
-        : <div className="mb-1 text-muted"><small> ~ {zero[0]}<b>{zero[1]}</b>{zero[2]} ~ </small></div>
-      }
-
-      <button
-        className="btn btn-primary mb-1"
-        style={{ width: '10em' }}
-        onClick={() => appendNewPlace()}
-        role="button"
-        ariaLabel={LABEL_APPEND}
-        title={LABEL_APPEND}
-      >Add Place</button>
-
-      <div
-        className="mt-3"
-      >
-        <strong>Prize Pool:</strong> {totalPrizePool > 0 ? `$${totalPrizePool}` : ''}
-      </div>
-
-      <div
-        className="mt-2"
-      >
-        Even Chop: {
-          chopValue > 0
-          ? <span><strong>${chopValue}</strong> x {count} ( = ${chopTotal} total )</span>
-          : ''
-        }
-      </div>
-
-      {totalPrizePool > 0 && <div>( after first giving {percentLink()} to <strong>Chip Leader{bonus > 0 ? `: $${bonus}` : ''}</strong> )</div>}
-
-    </div>
-  );
+	default:	// such as "@@redux/INITt.v.y.0.u"
+		return state;
+	};
 };
 
-ReactDOM.render(<App />, document.querySelector('#root'));
+const reduxStore = Redux.createStore(modalReducer);
+
+
+
+const Choppah = () => {
+
+	const [places, setPlaces] = React.useState(
+		loadedPlaces.some(Boolean) ? loadedPlaces : EXAMPLE_DATA
+	);
+
+	const dispatch = ReactRedux.useDispatch();
+
+	const showModalState = ReactRedux.useSelector(state => state.showModal);
+
+	const CL_PERCENT = ReactRedux.useSelector(state => state.bonus);
+
+	const handleBonusClick = () => {
+		dispatch( showBonusModal() );
+	};
+
+	const handleBonusInputChange = (evtOrValue, min, max) => {
+		evtOrValue = evtOrValue?.target?.value ?? evtOrValue;
+		min ||= BONUS_MIN, max ||= BONUS_MAX;
+		const n = String(evtOrValue ?? "").replace(/[^\d\.-]/g, "");
+		if (n.length && n >= min && n <= max) {
+			dispatch( setBonus(+n) );
+			return true;
+		};
+	};
+
+	const handleBonusClose = () => {
+		dispatch( hideBonusModal() );
+	};
+
+	const handleModalKeyUp = (evt, fnClose) => {
+		if(evt.code === "Escape") return fnClose();
+		if(evt.code === "Enter") return document.getElementById("modalSubmit").click();
+	};
+
+	const inputNumberDefaultChangeClose = (
+		descArray,
+		def,
+		fnChange,
+		fnClose,
+		promptImmediately,
+		min,
+		max
+	) => {
+
+		let entered, changed;
+
+		let description = `${descArray[0]} ${
+			min == null || max == null
+			? ""
+			: descArray[1].replace("MIN", min).replace("MAX", max)
+		}`;
+
+		if(promptImmediately) {
+			entered = prompt(description, def);
+			return (
+				description,
+				def,
+				changed = fnChange(entered, min, max),
+				(changed || true) && fnClose()
+			);
+		};
+
+		return (
+			<div className="modal">
+				<div className="modal-content"
+					onKeyUp={ evt => handleModalKeyUp(evt, fnClose) }
+				>
+					<label>{description}</label>
+					<input
+						id="ModalsAreAnnoying"
+						autoFocus
+						className="mb-2"
+						// value={def}
+						// onChange={ evt => evt.target.value }
+						// type="number"
+						// min={min}
+						// max={max}
+					/>
+						<button
+						id="modalSubmit"
+						type="submit"
+						className="btn btn-warning"
+						onClick={
+							() => (
+								fnChange( document.getElementById("ModalsAreAnnoying").value ), fnClose()
+							)
+						}
+					>
+						Submit
+					</button>
+				</div>
+			</div>
+		);
+
+	};
+
+	const modalLabelHoverClick = (label, hover, fnClick) => (
+		<span
+			className="btn-link btn-light pb-1"
+			style={{ paddingLeft: "0.2em", paddingRight: "0.2em", cursor: "pointer" }}
+			onClick={fnClick}
+			aria-label={hover}
+			title={hover}
+		>
+			{label}
+		</span>
+	);
+
+	const bonusPercentageLink = () => modalLabelHoverClick(
+		CL_PERCENT ? `${CL_PERCENT.toFixed(1)}%` : "nothing extra",
+		CLICK_TO_OPEN_MODAL,
+		handleBonusClick
+	);
+
+	const bonusPrompt = () => (
+		showModalState && inputNumberDefaultChangeClose(
+			["Set a bonus of what % for the current CL:", "( MIN - MAX )"],
+			`${CL_PERCENT} %`,
+			(entered, min, max) => handleBonusInputChange(entered ?? CL_PERCENT, min, max),
+			handleBonusClose,
+			"xyzDEBUG_PROMPT_IMMEDIATELY" === "DEBUG_PROMPT_IMMEDIATELY" || /\bprompt\b/.test(location.search),
+			BONUS_MIN,
+			BONUS_MAX
+		)
+	);
+
+	const zero = zero_our().split("`");
+
+	const insertNewPlace = () => {
+		focusIndex(0, FOCUS_DELAY_SECONDARY);
+		setPlaces(["", ...places]);
+	};
+
+	const removePlace = (index) => {
+		const newPlaces = [...places];
+		newPlaces.splice(index, 1);
+		focusIndex(index, FOCUS_DELAY_SECONDARY);
+		setPlaces(newPlaces);
+	};
+
+	const appendNewPlace = () => {
+		focusIndex(places.length, FOCUS_DELAY_SECONDARY);
+		setPlaces([...places, ""]);
+	};
+
+	const updatePlace = (index, value) => {
+		const newPlaces = [...places];
+		newPlaces[index] = value <= 0 ? 0 : Number(value);
+		focusIndex(index, FOCUS_DELAY_SECONDARY);
+		setPlaces(newPlaces);
+	};
+
+	React.useEffect(() => {
+		localStorage.setItem(
+			APP_KEY,
+			JSON.stringify({
+				bonus: CL_PERCENT,
+				places
+			})
+		);
+	}, [places, CL_PERCENT]);
+
+	const totalPrizePool = places
+	.filter(value => value > 0)
+	.reduce((a, c) => a + Number(c), 0);
+
+	const bonus = Math.floor(totalPrizePool * ( CL_PERCENT / 100 ) );
+
+	const remaining = totalPrizePool - bonus;
+
+	const count = places.filter(value => value > 0).length;
+
+	const chopValue = count ? Math.floor(remaining / count) : NaN;
+
+	const chopTotal = count ? (chopValue * count) : NaN;
+
+	inputRefs = React.useRef([]);
+
+	return ( <div>
+
+		<button
+			className="btn btn-info mb-3"
+			style={{ width: "10em" }}
+			onClick={() => insertNewPlace()}
+			role="button"
+			aria-label={LABEL_INSERT}
+			title={LABEL_INSERT}
+		>Insert Place</button>
+
+		{
+			places.length
+			? places.map( (place, index) => {
+
+				return ( <div key={index}
+					className="d-flex align-items-center mb-2"
+				>
+
+					<label
+						style={{ display: "flex", alignItems: "center" }}
+					>
+						<span
+							style={{ minWidth: "2em", textAlign: "right" }}
+							className="mr-1"
+						>
+							{ordinal(index+1)}
+						</span>
+
+						<input
+							type="number" step="10"
+							className="form-control ml-1 mr-2"
+							style={{ width: "7.5em" }}
+							value={place || ""} 
+							onChange={({ target: { value } }) => updatePlace(index, value)}  
+							ref={el => inputRefs.current[index] = el}
+							aria-label={LABEL_INPUT(index)}
+							title={LABEL_INPUT(index)}
+						/>
+
+						<button
+							className="btn btn-danger btn-sm"
+							onClick={() => removePlace(index)}
+							role="button"
+							aria-label={LABEL_REMOVE(index)}
+							title={LABEL_REMOVE(index)}
+						>X</button>
+					</label>
+				</div> );
+
+			} )
+			: <div className="mb-1 text-muted"><small> ~ {
+				zero[0]
+			}<b>{
+				zero[1]
+			}</b>{
+				zero[2]
+			} ~ </small></div>
+		}
+
+		<button
+			className="btn btn-primary mb-1"
+			style={{ width: "10em" }}
+			onClick={() => appendNewPlace()}
+			role="button"
+			aria-label={LABEL_APPEND}
+			title={LABEL_APPEND}
+		>Add Place</button>
+
+		<div
+		className="mt-3"
+		>
+			<strong>Prize Pool:</strong> {
+				totalPrizePool > 0 ? `$${totalPrizePool}` : ""
+			}
+		</div>
+
+		<div
+			className="mt-2"
+		>
+			Even Chop: {
+				chopValue > 0
+				? <span>
+					<strong>${chopValue}</strong> x {count} ( = ${chopTotal} total )
+				</span>
+				: ""
+			}
+		</div>
+
+		{totalPrizePool > 0 && <div>( after first giving {
+			bonusPercentageLink()
+		}{
+			bonusPrompt()
+		} to <strong>Chip Leader{
+			bonus > 0 ? `: $${bonus}` : ""
+		}</strong> )</div>}
+
+	</div> );
+};
+
+const App = () => (
+	<React.StrictMode>
+		<ReactRedux.Provider store={reduxStore}>
+			<Choppah />
+		</ReactRedux.Provider>
+	</React.StrictMode>
+);
+
+ReactDOM.createRoot( document.querySelector("#root") ).render(<App />);	// React v18+
+// ReactDOM.render(<App />, document.querySelector("#root"));	// React v17-
 
 </script>
 </body>
