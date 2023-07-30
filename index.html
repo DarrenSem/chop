@@ -267,7 +267,12 @@ const Choppah = () => {
 	const removePlace = (index) => {
 		const newPlaces = [...places];
 		newPlaces.splice(index, 1);
-		focusIndex(index, FOCUS_DELAY_SECONDARY);
+		focusIndex(
+			index < newPlaces.length
+			? index
+			: newPlaces.length - 1,
+			FOCUS_DELAY_SECONDARY
+		);
 		setPlaces(newPlaces);
 	};
 
